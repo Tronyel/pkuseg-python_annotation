@@ -23,6 +23,7 @@ import pkuseg.inference as _inf
 from pkuseg.optimizer import ADF
 from pkuseg.scorer import getFscore
 
+
 # from typing import TextIO
 
 # from .res_summarize import summarize
@@ -32,13 +33,24 @@ from pkuseg.scorer import getFscore
 
 
 def train(config=None):
+    """
+    模型训练主入口
+
+    pkuseg.train(trainFile, testFile, savedir, train_iter = 20, init_model = None)
+                trainFile		训练文件路径。文件格式为多行文本
+                testFile		测试文件路径。
+                savedir			训练模型的保存路径。
+                train_iter		训练轮数。
+                init_model		初始化模型，默认为None表示使用默认初始化，用户可以填自己想要初始化的模型的路径如init_model='./models/'。
+    """
     if config is None:
         config = Config()
 
-    if config.init_model is None:
+    if config.init_model is None:  # None
         feature_extractor = FeatureExtractor()
     else:
         feature_extractor = FeatureExtractor.load(config.init_model)
+
     feature_extractor.build(config.trainFile)
     feature_extractor.save()
 
@@ -261,7 +273,7 @@ class Trainer:
         sumCorrOutput = 0
 
         for i, (correct, gold, pred) in enumerate(
-            zip(all_correct, all_gold, all_pred)
+                zip(all_correct, all_gold, all_pred)
         ):
             sumGold += gold
             sumOutput += pred

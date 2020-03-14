@@ -190,6 +190,23 @@ class FeatureExtractor:
         "ＡＢＣＤＥＦＧＨＩＪＫＬＭＮＯＰＱＲＳＴＵＶＷＸＹＺ" "ａｂｃｄｅｆｇｈｉｇｋｌｍｎｏｐｑｒｓｔｕｖｗｘｙｚ" "／・－"
     )
 
+    """translate()函数用法举例：
+    
+    输入：
+        from string import maketrans   # 引用 maketrans 函数。
+     
+        intab = "aeiou"
+        outtab = "12345"
+        trantab = maketrans(intab, outtab)
+    
+        str = "this is string example....wow!!!";
+        print(str.translate(trantab))
+    
+    输出：
+        th3s 3s str3ng 2x1mpl2....w4w!!!
+    """
+
+    # 将 "-._,|/*:" 这8个特殊字符分别转化为 &
     keywords_translate_table = str.maketrans("-._,|/*:", "&&&&&&&&")
 
     @classmethod
@@ -198,6 +215,11 @@ class FeatureExtractor:
 
     @classmethod
     def _num_letter_normalize_char(cls, character):
+        """
+        print(set("sw""re"))  # {'r', 'e', 's', 'w'}
+        print(set("s  w" "re"))  # {'w', 's', 'r', 'e', ' '}
+        print(set("s  w""re"))  # {'w', 's', 'r', 'e', ' '}
+        """
         if character in cls.num:
             return "**Num"
         if character in cls.letter:
@@ -230,30 +252,97 @@ class FeatureExtractor:
         # first pass to collect unigram and bigram and tag info
         word_length_info = Counter()
         specials = set()
-        for line in lines:
+        for line in lines:  # 逐行读取文件
             line = line.strip("\n\r")  # .replace("\t", " ")
             if not line:
                 continue
 
-            line = self.keyword_rename(line)
+            line = self.keyword_rename(line)  # 特殊字符转化
 
+            """将句子中的分隔符去除 \r \t \n
+            >>> '\ra\tnnnb\r\n'.split()
+            ['a', 'nnnb']
+            
+            文本 --> list
+            """
             # str.split() without sep sees consecutive whiltespaces as one separator
             # e.g., '\ra \t　b \r\n'.split() = ['a', 'b']
             words = [word for word in line.split()]
 
+            """
+            Counter()函数，统计字符串中单个字符的个数
+                >>> c = Counter('which')
+                >>> c
+                Counter({'h': 2, 'w': 1, 'i': 1, 'c': 1})
+                >>> 
+                >>> c.update('witch')
+                >>> c
+                Counter({'h': 3, 'w': 2, 'i': 2, 'c': 2, 't': 1})
+                >>> 
+                >>> d = Counter('watch')
+                >>> d
+                Counter({'w': 1, 'a': 1, 't': 1, 'c': 1, 'h': 1})
+                >>> 
+                >>> c.update(d)
+                >>> c
+                Counter({'h': 4, 'w': 3, 'c': 3, 'i': 2, 't': 2, 'a': 1})
+                >>> c['h']
+                4
+                >>> cc=Counter("象或者另一")
+                >>> cc
+                Counter({'象': 1, '或': 1, '者': 1, '另': 1, '一': 1})
+                >>> cc=Counter("象或  者另一")
+                >>> cc
+                Counter({' ': 2, '象': 1, '或': 1, '者': 1, '另': 1, '一': 1})
+            
+            map()函数，在py3返回一个迭代器，在py2返回一个list
+                def square(x):  # 计算平方数
+                    return x ** 2
+                a = map(square, [1, 2, 3, 4, 5])
+                print(a, list(a))
+                
+                输出： <map object at 0x7f5a46454278> [1, 4, 9, 16, 25]
+            
+            words = ['a', 'aa', 'b']
+            print(list(map(len, words)))  # [1, 2, 1]
+            """
             word_length_info.update(map(len, words))
+
+            """
+            set()更新，只保留唯一的元素，将长度大于或等于10的字符串记录下来
+            """
             specials.update(word for word in words if len(word)>=10)
+
+            """
+            unigram 也是set()类型，记录所有的字符串
+            """
             self.unigram.update(words)
 
+            """
+            words = ['中华人民共和国', '是', '一个', '伟大的', '国家']
+            words[:-1] : ['中华人民共和国', '是', '一个', '伟大的']
+            words[1:] :  ['是', '一个', '伟大的', '国家']
+            
+            for pre, suf in zip(words[:-1], words[1:]):
+                print("{}*{}".format(pre, suf))
+            
+            输出：
+                中华人民共和国*是
+                是*一个
+                一个*伟大的
+                伟大的*国家
+            
+            bigram 类型是 set()
+            """
             for pre, suf in zip(words[:-1], words[1:]):
                 self.bigram.add("{}*{}".format(pre, suf))
 
             example = [
-                self._num_letter_normalize_char(character)
-                for word in words
-                for character in word
-            ]
-            examples.append(example)
+                self._num_letter_normalize_char(character)  # 判断该 character 是否是数字或者英文字母
+                for word in words  # 对于每一个词 word
+                for character in word  # 对于 word 中的每一个字符 character
+            ]  # []
+            examples.append(example)  # [[], [], ...]
 
         max_word_length = max(word_length_info.keys())
         for length in range(1, max_word_length + 1):
@@ -587,7 +676,7 @@ class FeatureExtractor:
     def load(cls, model_dir=None):
         if model_dir is None:
             model_dir = config.modelDir
-        extractor = cls.__new__(cls)
+        extractor = cls.__new__(cls)  # TODO
 
         feature_path = os.path.join(model_dir, "features.pkl")
         if os.path.exists(feature_path):

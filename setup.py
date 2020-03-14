@@ -4,8 +4,8 @@ from distutils.extension import Extension
 import numpy as np
 from Cython.Build import cythonize
 
-def setup_package():
 
+def setup_package():
     long_description = "pkuseg-python"
 
     extensions = [

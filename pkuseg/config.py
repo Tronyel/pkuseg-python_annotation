@@ -34,7 +34,6 @@ class Config:
     available_models = ["default", "medicine", "tourism", "web", "news"]
     models_with_dict = ["medicine", "tourism"]
 
-
     def __init__(self):
         # main setting
         self.pkuseg_home = os.path.expanduser(os.getenv('PKUSEG_HOME', '~/.pkuseg'))
