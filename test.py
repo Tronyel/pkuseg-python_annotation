@@ -40,6 +40,31 @@ words = ['中华人民共和国', '是', '一个', '伟大的', '国家']
 # print(examples)
 
 
-words_info.update(map(len, words))
+# words_info.update(map(len, words))
+#
+# print(words_info)
 
-print(words_info)
+
+word = '中华人民共和国'
+word_length = len(word)
+tag_list = []
+for idx, character in enumerate(word):  # 对于每个词中的每个字符 character
+    if word_length == 1:
+        tag = 'B_single'
+        tag_list.append(tag)
+    elif idx == 0:
+        tag = 'B'
+        tag_list.append(tag)
+    elif idx == word_length - 1:
+        tag = 'I_end'
+        tag_list.append(tag)
+    elif idx == 1:
+        tag = 'I_first'
+        tag_list.append(tag)
+    else:
+        tag = 'I'
+        tag_list.append(tag)
+
+print(word)
+print(list(word))
+print(tag_list)

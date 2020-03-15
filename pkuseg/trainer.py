@@ -51,22 +51,37 @@ def train(config=None):
     else:
         feature_extractor = FeatureExtractor.load(config.init_model)
 
+    """
+    `build()` 函数包含以下过程 :
+        1.逐行读取训练文本，
+        2.去除换行符、分隔符
+        3.处理数字和英文字母
+        4.以字符为单位，以15种方式来抽取特征
+        5.定义5中标签
+        6.分别将特征和标签转化为id的形式
+    
+    `save()` 函数保存文件到 "xxx/models/ctb8/features.pkl", 二进制格式, 
+    字典结构如下 : 
+        data = {'unigram': xx, 'bigram': xx, 'feature_to_idx': xx, 'tag_to_idx': xx}
+    """
     feature_extractor.build(config.trainFile)
     feature_extractor.save()
 
+    # 将文本文件转为特征文件
     feature_extractor.convert_text_file_to_feature_file(
         config.trainFile, config.c_train, config.f_train
-    )
+    )  # ("xxx/data/small_training.utf8", "xxx/train.conll.txt", "xxx/train.feat.txt")
     feature_extractor.convert_text_file_to_feature_file(
         config.testFile, config.c_test, config.f_test
-    )
+    )  # ("xxx/data/small_test.utf8", "xxx/test.conll.txt", "xxx/test.feat.txt")
 
+    # 将特征文件中特征转化为id
     feature_extractor.convert_feature_file_to_idx_file(
         config.f_train, config.fFeatureTrain, config.fGoldTrain
-    )
+    )  # ("xxx/train.feat.txt", "xxx/ftrain.txt", "xxx/gtrain.txt")
     feature_extractor.convert_feature_file_to_idx_file(
         config.f_test, config.fFeatureTest, config.fGoldTest
-    )
+    )  # ("xxx/test.feat.txt", "xxx/ftest.txt", "xxx/gtest.txt")
 
     config.globalCheck()
 

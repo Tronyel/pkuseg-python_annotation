@@ -458,6 +458,8 @@ class FeatureExtractor:
             特征-13, 词的长度范围在 [6,5,4,3,2], 如果当前字符作为该词的 [开始字符的前一个] 字符，将该词加入到特征中
             特征-14, 当前字符作为新词的 [中间字符], 如果 [前边字符串不包含该字符，后边字符串包含该字符]，将该词加入到特征中
             特征-15, 当前字符作为新词的 [中间字符], 如果 [前边字符串包含该字符，后边字符串不包含该字符]，将该词加入到特征中
+
+        在特征抽取的过程中，当前character的标签（5个标签中的一个）也作为一个特征
         """
         cdef int length = len(wordary)  # 当前example长度
         w = wordary[idx]  # 当前词
@@ -677,59 +679,98 @@ class FeatureExtractor:
 
         return flist
 
-    def convert_feature_file_to_idx_file(
-            self, feature_file, feature_idx_file, tag_idx_file
-    ):
+    def convert_feature_file_to_idx_file(self, feature_file, feature_idx_file, tag_idx_file):
+        """
+        将特征文件中特征转化为id
+        For training : ("xxx/train.feat.txt", "xxx/ftrain.txt", "xxx/gtrain.txt")
+        For test     : ("xxx/test.feat.txt", "xxx/ftest.txt", "xxx/gtest.txt")
+        :param feature_file:
+        :param feature_idx_file:
+        :param tag_idx_file:
+        :return:
+        """
 
         with open(feature_file, "r", encoding="utf8") as reader:
             lines = reader.readlines()
 
-        with open(feature_idx_file, "w", encoding="utf8") as f_writer, open(
-                tag_idx_file, "w", encoding="utf8"
-        ) as t_writer:
+        with open(feature_idx_file, "w", encoding="utf8") as f_writer, \
+                open(tag_idx_file, "w", encoding="utf8") as t_writer:
 
+            # 文件的首行写入字典的大小，空一行
             f_writer.write("{}\n\n".format(len(self.feature_to_idx)))
             t_writer.write("{}\n\n".format(len(self.tag_to_idx)))
 
             tags_idx = []  # type: List[str]
             features_idx = []  # type: List[List[str]]
-            for line in lines:
+            for line in lines:  # 特征文件中的每一行
                 line = line.strip()
-                if not line:
+
+                # 代码，先不看循环，先看循环下边的执行语句
+                # 每一行（或者每个句子）结束之后，开始执行下边循环，因为不同行之间的字符特征字符串使用一个单独的空行隔开了
+                if not line:  # 句子结束，开始执行循环中的代码
                     # sentence finish
-                    for feature_idx in features_idx:
+                    for feature_idx in features_idx:  # 对于一句话中的单个字符的特征id集合而言
                         if not feature_idx:
                             f_writer.write("0\n")
                         else:
-                            f_writer.write(",".join(map(str, feature_idx)))
+                            f_writer.write(",".join(map(str, feature_idx)))  # 各个特征之间的id使用','进行分割拼接，作为一行
                             f_writer.write("\n")
-                    f_writer.write("\n")
+                    f_writer.write("\n")  # 每句话的特征id字符串和标签id之间使用空行进行分割
 
+                    """只有一个元素时，','不会加入
+                    >>> a=["B"]
+                    >>> ",".join(a)
+                    'B'
+                    """
                     t_writer.write(",".join(map(str, tags_idx)))
-                    t_writer.write("\n\n")
+                    t_writer.write("\n\n")  # 每两句话之间依然使用空行进行分割
 
                     tags_idx = []
                     features_idx = []
                     continue
 
-                splits = line.split(" ")
+                # 每一行（或者每个句子）结束之前，执行下边语句
+                splits = line.split(" ")  # 将每个characher的特征字符串进行分割，分割出的特征值的集合
                 feature_idx = [
                     self.feature_to_idx[feat]
-                    for feat in splits[:-1]
+                    for feat in splits[:-1]  # 因为最后一个是标签，需要单独进行id转换
                     if feat in self.feature_to_idx
                 ]
+                """
+                features_idx : 
+                    [[xx, xx, ...],        [],            [],        ...]
+                    字符1的特征id集合  字符2的特征id集合  字符3的特征id集合  ...
+                
+                tags_idx : 
+                    [xx,             xx,           xx,     ...]
+                    字符1的标签id  字符2的标签id  字符3的标签id  ...
+                """
                 features_idx.append(feature_idx)
                 tags_idx.append(self.tag_to_idx[splits[-1]])
 
-    def convert_text_file_to_feature_file(
-            self, text_file, conll_file=None, feature_file=None
-    ):
+    def convert_text_file_to_feature_file(self, text_file, conll_file=None, feature_file=None):
+        """
+        将文本文件转为特征文件
+        For training : ("xxx/data/small_training.utf8", "xxx/train.conll.txt", "xxx/train.feat.txt")
+        For test     : ("xxx/data/small_test.utf8", "xxx/test.conll.txt", "xxx/test.feat.txt")
+        :param text_file:
+        :param conll_file:  将每个字符的标签写入到该文件中，每一行一个字符，格式为 '国 B'，行与行之间的字符使用一个空行进行分割
+        :param feature_file:  将当前字符的特征字符串和标签组成的list，使用空格进行拼接，每个字符占一行，行与行之间的字符使用一个空行进行分割
+        """
 
+        """
+        >>> "{}.conll{}".format(*os.path.split("/home/wyb/data/train.json"))
+        '/home/wyb/data.conlltrain.json'
+        >>> os.path.split("/home/wyb/data/train.json")
+        ('/home/wyb/data', 'train.json')
+        """
+        # 定义文件名
         if conll_file is None:
             conll_file = "{}.conll{}".format(*os.path.split(text_file))
         if feature_file is None:
             feature_file = "{}.feat{}".format(*os.path.split(text_file))
 
+        # self.nLabel = 5
         if config.nLabel == 2:
             B = B_single = "B"
             I_first = I = I_end = "I"
@@ -742,28 +783,41 @@ class FeatureExtractor:
             B_single = "B_single"
             I_first = I = "I"
             I_end = "I_end"
-        elif config.nLabel == 5:
+        elif config.nLabel == 5:  # do this
             B = "B"
-            B_single = "B_single"
+            B_single = "B_single"  # 单个字符独立成词
             I_first = "I_first"
             I = "I"
             I_end = "I_end"
 
         conll_line_format = "{} {}\n"
 
-        with open(text_file, "r", encoding="utf8") as reader, open(
-                conll_file, "w", encoding="utf8"
-        ) as c_writer, open(feature_file, "w", encoding="utf8") as f_writer:
-            for line in reader:
+        with open(text_file, "r", encoding="utf8") as reader, \
+                open(conll_file, "w", encoding="utf8") as c_writer, \
+                open(feature_file, "w", encoding="utf8") as f_writer:
+            for line in reader:  # 逐行读取原始文本文件 line
                 line = line.strip()
                 if not line:
                     continue
+                # 将包含在 '-._,|/*:&' 中的字符统一替换为 '&'， 输入文件词之间是以空格隔开的，将其分隔
                 words = self.keyword_rename(line).split()
-                example = []
-                tags = []
-                for word in words:
+                example = []  # 存储一行中所有的字符
+                tags = []     # 存储一行中每个字符对应的标签
+                for word in words:  # 对于每行中的每个词 word
                     word_length = len(word)
-                    for idx, character in enumerate(word):
+                    """
+                    将词中的每个字符打上标签 : 
+                    'B_single' : 单个字符, 独立成词
+                    'B'        : 多个字符, 开始的字符
+                    'I_end'    : 多个字符, 结尾的字符
+                    'I_first'  : 多个字符, 第二个字符 (一般文本字符串开始和结尾都会有特殊标记来标注一句话的开始和结束)
+                    'I'        : 多个字符, 位于中间的字符
+                    
+                    eg, word = '中华人民共和国'
+                        ['中', '华',       '人', '民', '共', '和', '国']
+                        ['B',  'I_first', 'I',  'I',  'I', 'I',  'I_end']
+                    """
+                    for idx, character in enumerate(word):  # 对于每个词中的每个字符 character
                         if word_length == 1:
                             tag = B_single
                         elif idx == 0:
@@ -774,33 +828,40 @@ class FeatureExtractor:
                             tag = I_first
                         else:
                             tag = I
-                        c_writer.write(conll_line_format.format(character, tag))
+                        c_writer.write(conll_line_format.format(character, tag))  # 写入 conll_file 文件，每个字符占一行
 
-                        if config.numLetterNorm:
-                            example.append(
+                        if config.numLetterNorm:  # self.numLetterNorm = True
+                            example.append(  # example=[] 的范围是在本行内 line
+                                # 判断当前字符是否是 英文字母或者数字， 如果是，返回特殊标记字符串，否则返回字符本身
                                 self._num_letter_normalize_char(character)
                             )
                         else:
                             example.append(character)
-                        tags.append(tag)
-                c_writer.write("\n")
+                        tags.append(tag)  # tags=[] 的范围是在本行内 line
+                c_writer.write("\n")  # 每行处理完之后，使用空行隔开
 
-                for idx, tag in enumerate(tags):
+                for idx, tag in enumerate(tags):  # 对于一行文本来说 line
                     features = self.get_node_features(idx, example)
                     features = [
-                        (feature if feature in self.feature_to_idx else "/")
+                        (feature if feature in self.feature_to_idx else "/")  # self.feature_to_idx 是从训练语料中获取的
                         for feature in features
                     ]
-                    features.append(tag)
+                    features.append(tag)  # 当前character的标签也作为一个特征
+                    """
+                    写入到 feature_file 文件中， 每一行是所抽取的当前字符的(15+1)类特征字符串的拼接，使用空格进行拼接
+                    """
                     f_writer.write(" ".join(features))
                     f_writer.write("\n")
-                f_writer.write("\n")
+                f_writer.write("\n")  # 每行处理完之后，使用空行隔开
 
     def save(self, model_dir=None):
+        """
+        "xxx/models/ctb8/features.pkl"
+        """
         if model_dir is None:
-            model_dir = config.modelDir
+            model_dir = config.modelDir  # "xxx/models/ctb8"
         data = {}
-        data["unigram"] = sorted(list(self.unigram))
+        data["unigram"] = sorted(list(self.unigram))  # sorted() 默认是升序排列
         data["bigram"] = sorted(list(self.bigram))
         data["feature_to_idx"] = self.feature_to_idx
         data["tag_to_idx"] = self.tag_to_idx
