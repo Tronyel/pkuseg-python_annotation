@@ -8,15 +8,21 @@ from .config import config
 class Model:
     def __init__(self, n_feature, n_tag):
 
-        self.n_tag = n_tag
+        self.n_tag = n_tag  # len(n_tag) == 5, 即所有的标签
         self.n_feature = n_feature
-        self.n_transition_feature = n_tag * (n_feature + n_tag)
+        self.n_transition_feature = n_tag * (n_feature + n_tag)  # TODO: 为啥这么多？？？
+        """
+        self.random = (0)  # 0 for 0-initialization of model weights, 1 for random init of model weights
+        """
         if config.random:
-            self.w = np.random.random(size=(self.n_transition_feature,)) * 2 - 1
+            self.w = np.random.random(size=(self.n_transition_feature,)) * 2 - 1  # 权重随机初始化
         else:
-            self.w = np.zeros(self.n_transition_feature)
+            self.w = np.zeros(self.n_transition_feature)  # do this, 权重0初始化, shape=(self.n_transition_feature, )
 
     def expand(self, n_feature, n_tag):
+        """
+        当 `init_model` 存在时，调用该函数
+        """
         new_transition_feature = n_tag * (n_feature + n_tag)
         if config.random:
             new_w = np.random.random(size=(new_transition_feature,)) * 2 - 1

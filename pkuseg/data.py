@@ -212,7 +212,7 @@ import random
 
 class DataSet:
     def __init__(self, n_tag=0, n_feature=0):
-        self.lst = []  # type: List[Example]
+        self.lst = []  # type: List[Example] #存储的是每一行文本的Example对象
         self.n_tag = n_tag
         self.n_feature = n_feature
         # if len(args) == 2:
@@ -249,43 +249,50 @@ class DataSet:
     #     self.nTag = X.nTag
     #     self.nFeature = X.nFeature
 
-    def resize(self, scale):
-        dataset = DataSet(self.n_tag, self.n_feature)
+    def resize(self, scale):  # scale==1
+        dataset = DataSet(self.n_tag, self.n_feature)  # 重新初始化Dataset
         new_size = int(len(self) * scale)
         old_size = len(self)
         for i in range(new_size):
             if i >= old_size:
-                i %= old_size
+                i %= old_size  # 取余，从原来的数据开头，重新取重复的数据添加进来
             dataset.append(self[i])
         return dataset
 
     @classmethod
     def load(cls, feature_idx_file, tag_idx_file):
+        """
+        For training : ('ftrain.txt', 'gtrain.txt')
+        For test     : ('ftest.txt', 'gtest.txt')
+        """
         dataset = cls.__new__(cls)
 
         # def load(self, fileFeature, fileTag):
-        with open(feature_idx_file, encoding="utf-8") as f_reader, open(
-            tag_idx_file, encoding="utf-8"
-        ) as t_reader:
-
+        with open(feature_idx_file, encoding="utf-8") as f_reader, \
+                open(tag_idx_file, encoding="utf-8") as t_reader:
+            # 按行将读取的文件分割开，最后一个元素是空，去掉
             example_strs = f_reader.read().split("\n\n")[:-1]
             tags_strs = t_reader.read().split("\n\n")[:-1]
 
-        assert len(example_strs) == len(
-            tags_strs
-        ), "lengths do not match:\t{}\n{}\n".format(example_strs, tags_strs)
+        assert len(example_strs) == len(tags_strs), "lengths do not match:\t{}\n{}\n".format(example_strs, tags_strs)
 
+        # feature文件和tag文件中，总数量, 文件中第一行为特征/标签总数量
         n_feature = int(example_strs[0])
         n_tag = int(tags_strs[0])
 
-        dataset.n_feature = n_feature
-        dataset.n_tag = n_tag
+        dataset.n_feature = n_feature  # 语料中所有特征的数量
+        dataset.n_tag = n_tag  # 一共5个标签
         dataset.lst = []
 
-        for example_str, tags_str in zip(example_strs[1:], tags_strs[1:]):
+        for example_str, tags_str in zip(example_strs[1:], tags_strs[1:]):  # 对于每句话而言（每行文本）
+            """
+            features, type: list[list[int]] for one line
+            [[2, 32, 1, ...],    [],           [],    ...]
+                  特征行1        特征行2        特征行3
+            """
             features = [
                 list(map(int, feature_line.split(",")))
-                for feature_line in example_str.split("\n")
+                for feature_line in example_str.split("\n")  # 对于每个特征行而言
             ]
             tags = tags_str.split(",")
             example = Example(features, tags)
@@ -325,13 +332,16 @@ class DataSet:
 
 
 class Example:
+    """
+    每一个Example对象代表文本文件中的一行
+    """
     def __init__(self, features, tags):
         self.features = features  # type: List[List[int]]
         self.tags = list(map(int, tags))  # type: List[int]
         self.predicted_tags = None
 
     def __len__(self):
-        return len(self.features)
+        return len(self.features)  # 返回的是每行文本中 特征行的个数
 
 
 # class dataSeq:

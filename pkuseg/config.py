@@ -50,9 +50,7 @@ class Config:
         # self.reg = 1
         # self.regs = [1]
         # self.regList = self.regs.copy()
-        self.random = (
-            0
-        )  # 0 for 0-initialization of model weights, 1 for random init of model weights
+        self.random = (0)  # 0 for 0-initialization of model weights, 1 for random init of model weights
         self.evalMetric = (
             "f1"
         )  # tok.acc (token accuracy), str.acc (string accuracy), f1 (F1-score)
@@ -112,6 +110,15 @@ class Config:
         self.order = 1
 
     def globalCheck(self):
+        """
+        self.evalMetric = ("f1")
+        self.rate0 = 0.05  # init value of decay rate in SGD and ADF training
+        self.trainSizeScale = 1  # for scaling the size of training data
+        self.ttlIter = 20  # of training iterations
+        self.nUpdate = 10  # for ADF training
+        self.miniBatch = 1  # mini-batch in stochastic training
+        self.reg = 1
+        """
         if self.evalMetric == "f1":
             self.metric = "f-score"
         elif self.evalMetric == "tok.acc":

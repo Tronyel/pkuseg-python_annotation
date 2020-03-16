@@ -15,6 +15,10 @@ np.import_array()
 
 class belief:
     def __init__(self, nNodes, nStates):
+        """
+        :param nNodes: 在当前样本中，字符的个数
+        :param nStates: 5 --> 标签的数量
+        """
         self.belState = np.zeros((nNodes, nStates))
         self.belEdge = np.zeros((nNodes, nStates * nStates))
         self.Z = 0
@@ -104,8 +108,18 @@ cpdef run_viterbi(np.ndarray[double, ndim=2] node_score, np.ndarray[double, ndim
 @cython.boundscheck(False)
 @cython.wraparound(False)
 cpdef getLogYY(vector[vector[int]] feature_temp, int num_tag, int backoff, np.ndarray[double, ndim=1] w, double scalar):
+    """
+    :param feature_temp: example.features, 类型是List[List[int]]，内层list表示每个字符的特征id集合，外层的list表示当前文本行中所有的字符
+    :param num_tag: model.n_tag, 为5
+    :param backoff: model.n_feature*model.n_tag, 即：语料中所有特征的数量 × 5
+    :param w: model.w, 初始化后的权重矩阵
+    :param scalar: 1.0
+    :return: node_score, edge_score
+            两个2维的矩阵
+    """
     cdef:
-        int num_node = feature_temp.size()
+        int num_node = feature_temp.size()  # 当前文本行中， 字符个数 × 每个字符的特征个数=当前行中所有特征个数
+        # ndim=2 表示有两个维度(x, y)
         np.ndarray[double, ndim=2] node_score = np.zeros((num_node, num_tag), dtype=np.float64)
         np.ndarray[double, ndim=2] edge_score = np.ones((num_tag, num_tag), dtype=np.float64)
         int s, s_pre, i
@@ -127,6 +141,13 @@ cpdef getLogYY(vector[vector[int]] feature_temp, int num_tag, int backoff, np.nd
 @cython.boundscheck(False)
 @cython.wraparound(False)
 cpdef maskY(object tags, int nNodes, int nTag, np.ndarray[double, ndim=2] Y):
+    """
+    :param tags: example.tags, 类型是List[int]， 存储的是当前行所有字符的标签id
+    :param nNodes: len(example), 得到的是每行文本中 特征行的个数，即当前行中所有字符的个数
+    :param nTag: model.n_tag, 为5
+    :param Y: 即node_score, 二维的矩阵 5*5
+    :return: mask_Yi, 是一个 5×5 的二维矩阵，根据每个字符实际的标签，将不对应的标签全部赋值为 -1e100
+    """
     cdef np.ndarray[double, ndim=2] mask_Yi = Y.copy()
     cdef double maskValue = -1e100
     cdef list tagList = tags
@@ -174,8 +195,34 @@ def decodeViterbi_fast(feature_temp, model):
 
 
 def getYYandY(model, example):
+    """
+    :param model: pkuseg.model.Model
+    :param example: 当前样本的 Example 对象
+    :return:
+        `Y`, node_score 两个二维的矩阵
+        `YY`, edge_score 两个二维的矩阵
+        `mask_Y`, 是一个 5×5 的二维矩阵，根据每个字符实际的标签，将不对应的标签全部赋值为 -1e100
+        `mask_YY`, YY, edge_score 两个二维的矩阵
+    """
+    """
+    `getLogYY()`函数的参数 : 
+        example.features, 类型是List[List[int]]，内层list表示每个字符的特征id集合，外层的list表示当前文本行中所有的字符
+        model.n_tag, 为5
+        model.n_feature*model.n_tag, 即：语料中所有特征的数量 × 5
+        model.w, 初始化后的权重矩阵
+        
+        return node_score, edge_score, 两个二维的矩阵
+    
+    `maskY()`函数的参数 :
+        example.tags, 类型是List[int]， 存储的是当前行所有字符的标签id
+        len(example), 得到的是每行文本中 特征行的个数，即当前行中所有字符的个数
+        model.n_tag, 为5
+        Y, 即node_score, 二维的矩阵
+        
+        return mask_Yi, 
+        `mask_Yi`是一个 5×5 的二维矩阵，根据每个字符实际的标签，将不对应的标签全部赋值为 -1e100
+    """
     Y, YY = getLogYY(example.features, model.n_tag, model.n_feature*model.n_tag, model.w, 1.0)
     mask_Y = maskY(example.tags, len(example), model.n_tag, Y)
     mask_YY = YY
     return Y, YY, mask_Y, mask_YY
-

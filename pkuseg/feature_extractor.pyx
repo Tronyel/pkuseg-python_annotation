@@ -239,8 +239,8 @@ class FeatureExtractor:
 
         self.unigram = set()  # type: Set[str]
         self.bigram = set()  # type: Set[str]
-        self.feature_to_idx = {}  # type: Dict[str, int]
-        self.tag_to_idx = {}  # type: Dict[str, int]
+        self.feature_to_idx = {}  # type: Dict[str, int] # 语料中所有的特征
+        self.tag_to_idx = {}  # type: Dict[str, int]  # 一共5个标签
 
     def build(self, train_file):
         """处理过程：

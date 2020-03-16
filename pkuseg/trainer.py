@@ -83,8 +83,15 @@ def train(config=None):
         config.f_test, config.fFeatureTest, config.fGoldTest
     )  # ("xxx/test.feat.txt", "xxx/ftest.txt", "xxx/gtest.txt")
 
+    # 设置使用的评价指标、部分训练参数
     config.globalCheck()
 
+    """
+    `config.outDir` : 'xxx/output/'
+    `config.fTune` : 'xxx/output/tune.txt'
+    `config.fLog` : 'xxx/output/trainLog.txt'
+    `config.fResRaw` : 'xxx/output/rawResult.txt'
+    """
     config.swLog = open(os.path.join(config.outDir, config.fLog), "w")
     config.swResRaw = open(os.path.join(config.outDir, config.fResRaw), "w")
     config.swTune = open(os.path.join(config.outDir, config.fTune), "w")
@@ -95,38 +102,43 @@ def train(config=None):
     print("\nreading training & test data...")
     config.swLog.write("\nreading training & test data...\n")
 
-    trainset = DataSet.load(config.fFeatureTrain, config.fGoldTrain)
-    testset = DataSet.load(config.fFeatureTest, config.fGoldTest)
+    """
+    self.fFeatureTrain : 'ftrain.txt'
+    self.fGoldTrain : 'gtrain.txt'
+    self.fFeatureTest : 'ftest.txt'
+    self.fGoldTest : 'gtest.txt'
+    """
+    trainset = DataSet.load(config.fFeatureTrain, config.fGoldTrain)  # ('ftrain.txt', 'gtrain.txt')
+    testset = DataSet.load(config.fFeatureTest, config.fGoldTest)  # ('ftest.txt', 'gtest.txt')
 
-    trainset = trainset.resize(config.trainSizeScale)
+    # 是否扩增/缩小数据集，扩增方法是重复取数据，缩小方法是只取部分数据
+    trainset = trainset.resize(config.trainSizeScale)  # (1)
 
-    print(
-        "done! train/test data sizes: {}/{}".format(len(trainset), len(testset))
-    )
-    config.swLog.write(
-        "done! train/test data sizes: {}/{}\n".format(
-            len(trainset), len(testset)
-        )
-    )
+    print("done! train/test data sizes: {}/{}".format(len(trainset), len(testset)))
+    config.swLog.write("done! train/test data sizes: {}/{}\n".format(len(trainset), len(testset)))
 
-    config.swLog.write("\nr: {}\n".format(config.reg))
+    config.swLog.write("\nr: {}\n".format(config.reg))  # self.reg = 1
     print("\nr: {}".format(config.reg))
-    if config.rawResWrite:
+    if config.rawResWrite:  # self.rawResWrite = True
         config.swResRaw.write("\n%r: {}\n".format(config.reg))
 
+    # 使用训练集，初始化训练类
     trainer = Trainer(config, trainset, feature_extractor)
 
-    time_list = []
+    time_list = []  # 存储 `trainer.train_epoch()` 过程的耗时
     err_list = []
     diff_list = []
     score_list_list = []
 
-    for i in range(config.ttlIter):
+    for i in range(config.ttlIter):  # self.ttlIter = 20  # of training iterations
         # config.glbIter += 1
         time_s = time.time()
+
         err, sample_size, diff = trainer.train_epoch()
+
         time_t = time.time() - time_s
         time_list.append(time_t)
+
         err_list.append(err)
         diff_list.append(diff)
 
@@ -159,11 +171,11 @@ class Trainer:
     def __init__(self, config, dataset, feature_extractor):
         self.config = config
         self.X = dataset
-        self.n_feature = dataset.n_feature
-        self.n_tag = dataset.n_tag
+        self.n_feature = dataset.n_feature  # 特征总数量
+        self.n_tag = dataset.n_tag  # 标签总数量==5
 
         if config.init_model is None:
-            self.model = Model(self.n_feature, self.n_tag)
+            self.model = Model(self.n_feature, self.n_tag)  # do this
         else:
             self.model = Model.load(config.init_model)
             self.model.expand(self.n_feature, self.n_tag)
@@ -171,9 +183,21 @@ class Trainer:
         self.optim = self._get_optimizer(dataset, self.model)
 
         self.feature_extractor = feature_extractor
-        self.idx_to_chunk_tag = {}
+        self.idx_to_chunk_tag = {}  # {0: 'B', 1: 'B_single', 2: 'I', 3: 'I', 4: 'I'}
+        """
+        `tag_to_idx` : 
+            {'B': 0, 'B_single': 1, 'I': 2, 'I_end': 3, 'I_first': 4}
+        
+        `startswith()` 函数：
+            >>> aaa
+            'Begin'
+            >>> aaa.startswith("A")
+            False
+            >>> aaa.startswith("B")
+            True
+        """
         for tag, idx in feature_extractor.tag_to_idx.items():
-            if tag.startswith("I"):
+            if tag.startswith("I"):  # ['I', 'I_end', 'I_first']
                 tag = "I"
             if tag.startswith("O"):
                 tag = "O"
@@ -181,7 +205,7 @@ class Trainer:
 
     def _get_optimizer(self, dataset, model):
         config = self.config
-        if "adf" in config.modelOptimizer:
+        if "adf" in config.modelOptimizer:  # self.modelOptimizer = "crf.adf"
             return ADF(config, dataset, model)
 
         raise ValueError("Invalid Optimizer")
